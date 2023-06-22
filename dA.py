@@ -21,30 +21,31 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-# Portions of this code have been adapted from Yusuke Sugomori's code on GitHub: https://github.com/yusugomori/DeepLearning
+# Portions of this code have been adapted from Yusuke Sugomori's code on GitHub:
+# https://github.com/yusugomori/DeepLearning
 
-import sys
-import numpy
-from utils import *
-import json
+from .utils import numpy
+from scipy.special import expit
 
-class dA_params:
-    def __init__(self,n_visible = 5, n_hidden = 3, lr=0.001, corruption_level=0.0, gracePeriod = 10000, hiddenRatio=None):
-        self.n_visible = n_visible# num of units in visible (input) layer
-        self.n_hidden = n_hidden# num of units in hidden layer
+
+class DAParams:
+    def __init__(self, n_visible=5, n_hidden=3, lr=0.001, corruption_level=0.0, grace_period=10000, hidden_ratio=None):
+        self.n_visible = n_visible  # num of units in visible (input) layer
+        self.n_hidden = n_hidden  # num of units in hidden layer
         self.lr = lr
         self.corruption_level = corruption_level
-        self.gracePeriod = gracePeriod
-        self.hiddenRatio = hiddenRatio
+        self.gracePeriod = grace_period
+        self.hiddenRatio = hidden_ratio
 
-class dA:
+
+class DA:
     def __init__(self, params):
         self.params = params
 
         if self.params.hiddenRatio is not None:
-            self.params.n_hidden = int(numpy.ceil(self.params.n_visible*self.params.hiddenRatio))
+            self.params.n_hidden = int(numpy.ceil(self.params.n_visible * self.params.hiddenRatio))
 
-        # for 0-1 normlaization
+        # for 0-1 normalization
         self.norm_max = numpy.ones((self.params.n_visible,)) * -numpy.Inf
         self.norm_min = numpy.ones((self.params.n_visible,)) * numpy.Inf
         self.n = 0
@@ -61,7 +62,6 @@ class dA:
         self.vbias = numpy.zeros(self.params.n_visible)  # initialize v bias 0
         self.W_prime = self.W.T
 
-
     def get_corrupted_input(self, input, corruption_level):
         assert corruption_level < 1
 
@@ -71,11 +71,11 @@ class dA:
 
     # Encode
     def get_hidden_values(self, input):
-        return sigmoid(numpy.dot(input, self.W) + self.hbias)
+        return expit(numpy.dot(input, self.W) + self.hbias)
 
     # Decode
     def get_reconstructed_input(self, hidden):
-        return sigmoid(numpy.dot(hidden, self.W_prime) + self.vbias)
+        return expit(numpy.dot(hidden, self.W_prime) + self.vbias)
 
     def train(self, x):
         self.n = self.n + 1
@@ -101,26 +101,24 @@ class dA:
         L_W = numpy.outer(tilde_x.T, L_h1) + numpy.outer(L_h2.T, y)
 
         self.W += self.params.lr * L_W
-        self.hbias += self.params.lr * numpy.mean(L_hbias, axis=0)
-        self.vbias += self.params.lr * numpy.mean(L_vbias, axis=0)
-        return numpy.sqrt(numpy.mean(L_h2**2)) #the RMSE reconstruction error during training
-
+        self.hbias += self.params.lr * L_hbias
+        self.vbias += self.params.lr * L_vbias
+        return numpy.sqrt(numpy.mean(L_h2 ** 2))  # the RMSE reconstruction error during training
 
     def reconstruct(self, x):
         y = self.get_hidden_values(x)
         z = self.get_reconstructed_input(y)
         return z
 
-    def execute(self, x): #returns MSE of the reconstruction of x
+    def execute(self, x):  # returns MSE of the reconstruction of x
         if self.n < self.params.gracePeriod:
             return 0.0
         else:
             # 0-1 normalize
             x = (x - self.norm_min) / (self.norm_max - self.norm_min + 0.0000000000000001)
             z = self.reconstruct(x)
-            rmse = numpy.sqrt(((x - z) ** 2).mean()) #MSE
+            rmse = numpy.sqrt(((x - z) ** 2).mean())  # MSE
             return rmse
 
-
-    def inGrace(self):
+    def in_grace(self):
         return self.n < self.params.gracePeriod
