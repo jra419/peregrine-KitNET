@@ -47,7 +47,8 @@ class KitNET:
         # Check if the feature map, ensemble layer and output layer are provided as input.
         # If so, skip the training phase.
 
-        if feature_map is not None:
+        if feature_map is not None \
+                and os.path.isfile(f'{Path(__file__).parents[0]}/../../{feature_map}'):
             with open(feature_map, 'rb') as f_fm:
                 self.v = pickle.load(f_fm)
             self.__createAD__()
@@ -57,7 +58,10 @@ class KitNET:
             print("Feature-Mapper: train-mode, Anomaly-Detector: off-mode")
         self.FM = CorClust(self.n)  # incremental feature clustering for the feature mapping process
 
-        if ensemble_layer is not None and output_layer is not None:
+        if ensemble_layer is not None \
+                and os.path.isfile(f'{Path(__file__).parents[0]}/../../{ensemble_layer}') \
+                and output_layer is not None \
+                and os.path.isfile(f'{Path(__file__).parents[0]}/../../{output_layer}'):
             with open(ensemble_layer, 'rb') as f_el:
                 self.ensembleLayer = pickle.load(f_el)
             with open(output_layer, 'rb') as f_ol:
@@ -82,7 +86,8 @@ class KitNET:
             # If the FM is in train-mode, and the user has not supplied a feature mapping
             # update the incremental correlation matrix
             self.FM.update(x)
-            if self.n_trained == self.FM_grace_period - 1:  # If the feature mapping should be instantiated
+            # If the feature mapping should be instantiated
+            if self.n_trained == self.FM_grace_period - 1:
                 self.v = self.FM.cluster(self.m)
                 self.__createAD__()
                 print("The Feature-Mapper found a mapping: " + str(self.n) + " features to " + str(
